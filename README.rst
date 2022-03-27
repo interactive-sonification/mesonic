@@ -10,8 +10,8 @@ mesonic
     :target: https://github.com/psf/black
     :alt: black
 
-.. image:: https://github.com/dreinsch/sonitk/actions/workflows/main.yml/badge.svg?branch=main
-    :target: https://github.com/dreinsch/sonitk/actions/workflows/main.yml
+.. image:: https://github.com/dreinsch/mesonic/actions/workflows/main.yml/badge.svg?branch=main
+    :target: https://github.com/dreinsch/mesonic/actions/workflows/main.yml
     :alt: github-actions
 
 a Sonification Framework
