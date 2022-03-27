@@ -22,7 +22,7 @@ Installation
 
 To clone and install mesonic with dependencies required for the notebooks run::
 
-    git clone git@github.com:dreinsch/mesonic.git
+    git clone https://github.com/dreinsch/mesonic.git
     cd mesonic
     pip install -e ".[notebooks]"
     pip install "git+https://github.com/interactive-sonification/sc3nb.git@develop"
