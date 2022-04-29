@@ -206,6 +206,8 @@ class Synth:
         track: int = 0,
         metadata: Optional[Dict] = None,
     ):
+        # using object.__settattr__ to avoid the overwritten __setattr__
+        # for details see https://github.com/dreinsch/mesonic/issues/6
         object.__setattr__(self, "_context", context)
         object.__setattr__(self, "_name", name)
         object.__setattr__(self, "_mutable", mutable)
@@ -379,10 +381,10 @@ class Synth:
             object.__getattribute__(self, name)
         except AttributeError:
             if name not in self._params:
-                raise
+                raise AttributeError("can't set attribute")
+            self._params[name].value = value
         else:
             object.__setattr__(self, name, value)
-        self._params[name].value = value
 
     def __repr__(self) -> str:
         values = {
