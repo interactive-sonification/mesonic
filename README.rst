@@ -22,13 +22,14 @@ Installation
 
 To clone and install mesonic with dependencies required for the notebooks run::
 
-    git clone https://github.com/dreinsch/mesonic.git
+    git clone https://github.com/interactive-sonification/mesonic.git
     cd mesonic
     pip install -e ".[notebooks]"
     pip install "git+https://github.com/interactive-sonification/sc3nb.git@develop"
 
 Note that to run the notebooks mesonic also requires `SuperCollider`_ and `pya`_ to be installed.
 
+We are currently making sure that mesonic can be installed regulary via pip.
 
 Running Tests & Building
 ========================
