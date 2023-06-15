@@ -265,7 +265,7 @@ class Synth:
 
         """
         if params or kwargs:
-            kwargs.update(params or {})
+            kwargs |= params or {}
             for name, value in kwargs.items():
                 assert (
                     name in self._params
@@ -321,7 +321,7 @@ class Synth:
 
         """
         if params or kwargs:
-            kwargs.update(params or {})
+            kwargs |= params or {}
             for name, value in kwargs.items():
                 self._params[name].set(value, info=info)
 
@@ -336,7 +336,12 @@ class Synth:
         """
         return {n: p.value for n, p in self._params.items()}
 
-    def _send_event(self, etype: SynthEventType, data: Dict[str, Any], info=None):
+    def _send_event(
+        self,
+        etype: SynthEventType,
+        data: Dict[str, Any],
+        info: Optional[Dict[str, Any]] = None,
+    ):
         """Send a SynthEvent
 
         Parameters
@@ -358,9 +363,13 @@ class Synth:
                 f"Immutable Synth can only produce {SynthEventType.START} "
                 f"but got {etype}"
             )
+        einfo: Dict = {}
+        einfo |= self.metadata
+        if info:
+            einfo |= info
         event = SynthEvent(
             track=self._track,
-            info=info or {},
+            info=einfo,
             synth=self,
             etype=etype,
             data=data,
