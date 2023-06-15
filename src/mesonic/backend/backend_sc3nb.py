@@ -109,7 +109,7 @@ class SynthEventHandlerSC3NB(EventHandlerSC3NB, SynthEventHandler):
         try:
             backend_part = self.synths[synth]
         except KeyError:
-            warnings.warn(f"Receivend event for unkown Synth: {synth}")
+            warnings.warn(f"Received event for unkown Synth: {synth}")
             return
         etype = event.etype
         if synth.mutable:

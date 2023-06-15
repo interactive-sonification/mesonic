@@ -301,7 +301,7 @@ class Context:
         if self.is_realtime:
             return self.realtime_playback.restart(at=at, rate=rate)
 
-    def render(self, output_path, **backend_kwargs):
+    def render(self, output_path=None, **backend_kwargs):
         """Render this context in non-realtime using the Backend.
 
         See Context.backend.render_nrt for more information.
