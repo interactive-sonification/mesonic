@@ -14,14 +14,14 @@ __license__ = "MIT"
 def test_timeline():
     """API Tests"""
     timeline = Timeline()
-    event00 = Event(track=100)
+    event00 = Event(track=100, info={"val": 0})
     event01 = Event(track=101)
-    event10 = Event(track=110)
+    event10 = Event(track=110, info={"val": 0})
     event11 = Event(track=111)
-    event20 = Event(track=120)
+    event20 = Event(track=120, info={"val": 0})
     event21 = Event(track=121)
     event22 = Event(track=122)
-    event30 = Event(track=130)
+    event30 = Event(track=130, info={"val": 0})
     assert timeline.is_empty()
     with pytest.raises(ValueError, match="Empty Timeline"):
         timeline.last_timestamp
@@ -75,6 +75,14 @@ def test_timeline():
 
     assert timeline.tail.next is None
     assert timeline.head.prev is None
+
+    timeline.filter(lambda event: event.info.get("val", None) == 0)
+    tl_dict = timeline.to_dict()
+    assert tl_dict == {
+        0: [event01],
+        1: [event11],
+        2: [event21, event22],
+    }
 
     weakrefs = [
         weakref.ref(bundle) for bundle in timeline

@@ -97,6 +97,35 @@ class Timeline:
         with self.lock:
             self.head = self.tail = None
 
+    def filter(self, predicate: Callable[[Event], bool]):
+        """Filter Events that don't return true if predicate is applied.
+
+        If a TimeBundle has no events after filtering it will be removed.
+
+        Parameters
+        ----------
+        predicate : Callable[[Event], bool]
+            Function used to filter the events.
+        """
+        with self.lock:
+            cur = self.head
+            while cur is not None:
+                cur.events = [event for event in cur.events if not predicate(event)]
+                if not cur.events:  # events are now empty
+                    self._remove_timebundle(cur)
+                cur = cur.next
+
+    def _remove_timebundle(self, bundle: TimeBundle):
+        with self.lock:
+            if bundle.prev is self.head:
+                self.head = bundle.next
+            if bundle.next is self.tail:
+                self.tail = bundle.prev
+            if bundle.next is not None:
+                bundle.next.prev = bundle.prev
+            if bundle.prev is not None:
+                bundle.prev.next = bundle.next
+
     def before(self, time: float) -> TimeBundle:
         """Get the TimeBundle before the provided time.
 
