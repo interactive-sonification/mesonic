@@ -53,4 +53,9 @@ def start_backend(
             from mesonic.backend.backend_sc3nb import BackendSC3NB
 
             return BackendSC3NB(**backend_kwargs)
+        if backend == "pya":
+            from mesonic.backend.backend_pya import BackendPya
+
+            return BackendPya(**backend_kwargs)
+
     raise NotImplementedError(f"Unsupported backend: {backend}")
