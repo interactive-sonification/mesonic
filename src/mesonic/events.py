@@ -1,7 +1,7 @@
 from enum import Enum, unique
 from typing import TYPE_CHECKING, Callable, Dict
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 if TYPE_CHECKING:
     from mesonic.record import Record
