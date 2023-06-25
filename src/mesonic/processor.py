@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from copy import deepcopy
+from copy import copy
 from typing import Callable, Dict, List, Optional
 
 from mesonic.backend.bases import EventHandler
@@ -114,7 +114,7 @@ class BundleProcessor:
         List[Event]
             The list of Events after the transformation.
         """
-        events = deepcopy(events)
+        events = copy(events)
 
         def new_fun(event: Event) -> Optional[Event]:
             """Filter events with a combined function."""
