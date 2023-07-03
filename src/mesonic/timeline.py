@@ -335,11 +335,15 @@ class Timeline:
             raise ValueError("end_time_offset must larger or equal 0")
         self._end_time_offset = value
 
-    def plot(self, duration_key="dur", default_duration=0.1):
+    def plot(self, parameter_key="freq", duration_key="dur", default_duration=0.1):
         """Plot the Timeline.
 
         Parameters
         ----------
+        parameter_key : str, optional
+            The Parameter name for the y-axis offset, by default "freq"
+            This is used to get the bounds of the parameter and set the
+            y-axis offset of the synth accordingly.
         duration_key : str, optional
             The Parameter name for the Synth duration, by default "dur"
             This is used to extract the duration from the Events.
@@ -367,9 +371,10 @@ class Timeline:
         axes = fig.add_subplot(1, 1, 1)
 
         spacing = 1
+        parameter_offset_min, parameter_offset_max = -0.3, 0.3
         y_offset = spacing
 
-        offsets = {}
+        synth_offsets = {}
         colors = {}
         mutable_synths = {}
         immutable_synths = {
@@ -383,10 +388,28 @@ class Timeline:
         for time, events in self.to_dict().items():
             for event in events:
                 if isinstance(event, SynthEvent):
-                    if event.synth not in offsets:
-                        offsets[event.synth] = y_offset
+                    if event.synth not in synth_offsets:
+                        synth_offsets[event.synth] = y_offset
                         y_offset += spacing
-                    offset = offsets[event.synth]
+
+                    parameter_offset = 0
+                    try:
+                        x1, x2 = event.synth.params[parameter_key].bounds
+                        if x1 is not None and x2 is not None:
+                            y1, y2 = parameter_offset_min, parameter_offset_max
+                            if event.etype is SynthEventType.SET:
+                                if event.data.get("name") == parameter_key:
+                                    value = event.data.get("new_value")
+                            else:
+                                value = event.data.get(
+                                    parameter_key,
+                                )
+                            parameter_offset = (value - x1) / (x2 - x1) * (y2 - y1) + y1
+                            print(event.synth, value, parameter_offset)
+                    except KeyError:
+                        parameter_offset = 0
+
+                    offset = synth_offsets[event.synth] + parameter_offset
 
                     if event.track not in colors:
                         colors[event.track] = cmap(event.track)
@@ -401,15 +424,24 @@ class Timeline:
                         immutable_synths["color"].append(color)
                     else:  # mutable Synth
                         synth_dict = mutable_synths.get(
-                            event.synth, {"start_times": [], "stop_times": []}
+                            event.synth,
+                            {
+                                "start_times": [],
+                                "stop_times": [],
+                                "start_offsets": [],
+                                "stop_offsets": [],
+                            },
                         )
                         if event.etype == SynthEventType.START:
                             dur = event.data.get(duration_key, None)
                             if dur:
                                 synth_dict["stop_times"].append(time + dur)
+                                synth_dict["stop_offsets"].append(offset)
                             synth_dict["start_times"].append(time)
+                            synth_dict["start_offsets"].append(offset)
                         elif event.etype == SynthEventType.STOP:
                             synth_dict["stop_times"].append(time)
+                            synth_dict["stop_offsets"].append(offset)
                         elif event.etype == SynthEventType.SET:
                             set_events["times"].append(time)
                             set_events["offsets"].append(offset)
@@ -429,9 +461,15 @@ class Timeline:
                 max_mutable_time = start_times[-1] + durations[-1]
             axes.quiver(
                 start_times,
-                [offsets[synth]] * len(start_times),
+                times["start_offsets"],  # [synth_offsets[synth]] * len(start_times),
                 durations,
-                0.0,
+                [
+                    stop - start
+                    for (start, stop) in zip(
+                        times["start_offsets"], times["stop_offsets"]
+                    )
+                ],
+                angles="xy",
                 scale=1,
                 scale_units="x",
                 color=colors[synth.track],
@@ -456,12 +494,12 @@ class Timeline:
                 alpha=0.5,
             )
 
-        yticks = list(offsets.values())
+        yticks = list(synth_offsets.values())
         axes.set_yticks(yticks)
         axes.set_yticklabels(
             [
                 f"{synth.name}" + (" (mutable)" if synth.mutable else " (immutable)")
-                for synth in offsets.keys()
+                for synth in synth_offsets.keys()
             ]
         )
         axes.set_ylim(yticks[0] - spacing * 0.75, yticks[-1] + spacing * 0.75)
