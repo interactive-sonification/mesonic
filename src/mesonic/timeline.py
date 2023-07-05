@@ -1,5 +1,5 @@
+import copy
 import math
-from copy import deepcopy
 from threading import RLock
 from time import time as get_timestamp
 from typing import Callable, Dict, List, Optional, Tuple
@@ -244,7 +244,7 @@ class Timeline:
         ret = {}
         with self.lock:
             for bundle in iter(self):
-                ret[bundle.timestamp + timeshift] = deepcopy(bundle.events)
+                ret[bundle.timestamp + timeshift] = copy.copy(bundle.events)
         return ret
 
     def extend(
@@ -268,7 +268,7 @@ class Timeline:
 
         """
         for time in sorted(timeline):
-            events = deepcopy(timeline[time])
+            events = copy.copy(timeline[time])
             if fun:
                 events = list(filter(None, map(fun, events)))
             self.insert(time + timeshift, events)
