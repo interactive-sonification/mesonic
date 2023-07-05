@@ -117,9 +117,9 @@ class Timeline:
 
     def _remove_timebundle(self, bundle: TimeBundle):
         with self.lock:
-            if bundle.prev is self.head:
+            if bundle is self.head:
                 self.head = bundle.next
-            if bundle.next is self.tail:
+            if bundle is self.tail:
                 self.tail = bundle.prev
             if bundle.next is not None:
                 bundle.next.prev = bundle.prev
