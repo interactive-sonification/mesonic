@@ -152,6 +152,22 @@ class Context:
         return self.at(self.realtime_playback.time + delay, info=info)
 
     @contextmanager
+    def test(self, at=0, rate=1, clear=True):
+        if self.is_realtime:
+            raise RuntimeError("Context.test not available in realtime mode")
+        if clear:
+            self.clear()
+
+        try:
+            yield self
+        except Exception as exception:
+            raise RuntimeError(
+                "Abort. Exception occured in Context.test"
+            ) from exception
+        else:
+            self.realtime_playback.start(at=at, rate=rate)
+
+    @contextmanager
     def at(self, time: float, info: Optional[Dict] = None):
         """Context Manager for scheduling Event at specified time.
 
