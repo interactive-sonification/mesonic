@@ -164,6 +164,3 @@ class Record:
             raise RuntimeError("The record must be paused before resuming.")
         self._state = RecordState.RUNNING
         self._send_event(RecordEventType.RESUME, info=info)
-
-    def __deepcopy__(self, memo) -> "Record":
-        return self

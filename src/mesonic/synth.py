@@ -401,6 +401,3 @@ class Synth:
             for k, v in self._param_values().items()
         }
         return f"Synth({self.name}, {values})"
-
-    def __deepcopy__(self, memo) -> "Synth":
-        return self
