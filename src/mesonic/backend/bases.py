@@ -255,6 +255,18 @@ class SynthManager(Manager[B, SynthEventHandler]):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def add_synth_def(self, name, **kwargs):
+        """Create a Synth Definition to the backend.
+
+        Parameters
+        ----------
+        name : str
+            SynthDef name.
+
+        """
+        raise NotImplementedError
+
     @property
     def names(self) -> Set[str]:
         """Get the names of the currently used Synths.

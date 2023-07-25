@@ -137,7 +137,6 @@ class SynthEventHandlerSC3NB(EventHandlerSC3NB, SynthEventHandler):
 
 
 class SynthManagerSC3NB(SynthManager):
-
     _backend: "BackendSC3NB"
 
     buffer_synthdefs: Dict[str, str] = {
@@ -154,6 +153,8 @@ class SynthManagerSC3NB(SynthManager):
         "NUM_CHANNELS": lambda scbuffer: scbuffer.channels,
         "BUFNUM": lambda scbuffer: scbuffer.bufnum,
     }
+
+    sent_synthdefs = set()
 
     def _create_event_handler(
         self, backend: "BackendSC3NB", synths: WeakKeyDictionary[Synth, scnode.Synth]
@@ -230,13 +231,13 @@ class SynthManagerSC3NB(SynthManager):
             gap: fun(scbuffer)
             for gap, fun in SynthManagerSC3NB.buffer_synthdefs_slots.items()
         }
-        return (
+        identifier = "sc3nb_{synth_name}_{scbuffer.bufnum}"
+        if identifier not in SynthManagerSC3NB.sent_synthdefs:
             SynthDef(
                 name=f"sc3nb_{synth_name}_{scbuffer.bufnum}", definition=synth_def_code
-            )
-            .set_contexts(gap_values)
-            .add()
-        )
+            ).set_contexts(gap_values).add()
+            SynthManagerSC3NB.sent_synthdefs.add(identifier)
+        return identifier
 
     def from_buffer(
         self, buffer: Buffer, synth_name: str = "playbuf", **synth_kwargs
@@ -249,6 +250,18 @@ class SynthManagerSC3NB(SynthManager):
         synth = self.create(synth_name, **synth_kwargs)
         synth.metadata.update({"from_buffer": buffer})
         return synth
+
+    def add_synth_def(self, name, code=None, **kwargs):
+        if code is None:
+            raise ValueError('Must provide "code"')
+        identifier_start = f"sc3nb_{name}"
+        if name in SynthManagerSC3NB.buffer_synthdefs:
+            SynthManagerSC3NB.sent_synthdefs = {
+                synth_def
+                for synth_def in SynthManagerSC3NB.sent_synthdefs
+                if not synth_def.startswith(identifier_start)
+            }
+        SynthManagerSC3NB.buffer_synthdefs[name] = code
 
 
 class RecordEventHandlerSC3NB(EventHandlerSC3NB, RecordEventHandler):
