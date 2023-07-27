@@ -54,21 +54,23 @@ class Context:
     def __init__(self, backend: Backend) -> None:
         self._backend = backend
         self._backend.register_context(self)
-        # create managers
+
         self.managers = {}
         self.event_handlers = []
-        self._playbacks = WeakSet()
 
         self._time = None
 
         self.timeline = Timeline()
         self.processor = BundleProcessor(self.event_handlers)
-        self.realtime_playback = self.create_playback()
+
+        self.playbacks = WeakSet()
+        self._playback = self.create_playback()
 
         self._in_time_context = False
         self._in_time_context_info = None
         self._context_events: List[Event] = []
 
+        # create managers
         for name, creator in DEFAULT_MANGERS.items():
             try:
                 manager = creator(backend, self)
@@ -104,12 +106,12 @@ class Context:
         """float: the current time in seconds.
 
         This respects the is_realtime property."""
-        return self.realtime_playback.time if self.is_realtime else self._time
+        return self._playback.time if self.is_realtime else self._time
 
     @time.setter
     def time(self, value):
         if self.is_realtime:
-            self.realtime_playback.time = value
+            self._playback.time = value
         else:
             self._time = value
 
@@ -147,9 +149,9 @@ class Context:
         """
         if not self.is_realtime:
             raise RuntimeError("now can only be used in realtime mode.")
-        if self.realtime_playback.reversed:
+        if self._playback.reversed:
             delay = -delay
-        return self.at(self.realtime_playback.time + delay, info=info)
+        return self.at(self._playback.time + delay, info=info)
 
     @contextmanager
     def test(self, at=0, rate=1, clear=True):
@@ -165,7 +167,7 @@ class Context:
                 "Abort. Exception occured in Context.test"
             ) from exception
         else:
-            self.realtime_playback.start(at=at, rate=rate)
+            self._playback.start(at=at, rate=rate)
 
     @contextmanager
     def at(self, time: float, info: Optional[Dict] = None):
@@ -241,8 +243,8 @@ class Context:
 
     @property
     def is_realtime(self) -> bool:
-        """bool: Flag if this is in realtime mode."""
-        return self.realtime_playback.running
+        """bool: Flag if this is in realtime mode. (playback.running == True)"""
+        return self._playback.running
 
     def enable_realtime(self, at: float = 0, rate: float = 1) -> Playback:
         """Start the realtime Playback.
@@ -260,11 +262,11 @@ class Context:
             realtime Playback instance of this Context.
         """
         if not self.is_realtime:
-            self.realtime_playback.loop = False
-            self.realtime_playback.start_time = at
-            self.realtime_playback.end_time = None
-            self.realtime_playback.start(at=at, rate=rate)
-        return self.realtime_playback
+            self._playback.loop = False
+            self._playback.start_time = at
+            self._playback.end_time = None
+            self._playback.start(at=at, rate=rate)
+        return self._playback
 
     def disable_realtime(self) -> Playback:
         """Stop the realtime Playback.
@@ -275,8 +277,8 @@ class Context:
             realtime Playback instance of this Contxt.
         """
         if self.is_realtime:
-            self.realtime_playback.stop()
-        return self.realtime_playback
+            self._playback.stop()
+        return self._playback
 
     def create_playback(self, **playback_kwargs) -> Playback:
         """Create a Playback instance.
@@ -289,7 +291,7 @@ class Context:
             created Playback
         """
         pb = Playback(self.timeline, self.processor, **playback_kwargs)
-        self._playbacks.add(pb)
+        self.playbacks.add(pb)
         return pb
 
     # Control related methods
@@ -298,7 +300,7 @@ class Context:
         """Reset the Context.
 
         This will clear the Context.timeline and restart the
-        realtime_playback if self.is_realtime
+        playback if self.is_realtime
 
         This is deprecated use Context.clear instead.
 
@@ -312,7 +314,7 @@ class Context:
         Returns
         -------
         Playback
-            realtime_playback if self.is_realtime.
+            playback if self.is_realtime.
 
         """
         warn(
@@ -326,7 +328,7 @@ class Context:
         """Clear the Context.
 
         This will clear the Context.timeline and restart the
-        realtime_playback if self.is_realtime
+        playback if self.is_realtime
 
         Parameters
         ----------
@@ -338,12 +340,12 @@ class Context:
         Returns
         -------
         Playback
-            realtime_playback if self.is_realtime.
+            playback if self.is_realtime.
 
         """
         self.timeline.reset()
         if self.is_realtime:
-            return self.realtime_playback.restart(at=at, rate=rate)
+            return self._playback.restart(at=at, rate=rate)
 
     def render(self, output_path=None, **backend_kwargs):
         """Render this context in non-realtime using the Backend.
@@ -363,7 +365,7 @@ class Context:
         Note that this will not stop the Playbacks.
 
         """
-        for pb in self._playbacks:
+        for pb in self.playbacks:
             with suppress(RuntimeError):
                 pb.stop()
         self._backend.stop(self)
