@@ -24,7 +24,6 @@ class TestSynthEvent:
         "ignore:using non-Enums in containment checks will raise TypeError in Python 3.8"
     )
     def test_init(self):
-
         # test too few arguments
         with pytest.raises(TypeError):
             SynthEvent()

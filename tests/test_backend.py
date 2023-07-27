@@ -10,7 +10,6 @@ __license__ = "MIT"
 
 
 def test_start_backend():
-
     with pytest.raises(NotImplementedError):
         start_backend("xy")
 
