@@ -28,20 +28,27 @@ def timeline() -> Timeline:
 class MockClock(Clock):
     def __init__(self, time) -> None:
         self._time = time
+        self.sleep_time = 0.2
 
     def time(self):
         return self._time
 
 
 @pytest.fixture
+def processor():
+    processor = MagicMock()
+    processor.latency = 0.2
+    return processor
+
+
+@pytest.fixture
 def playback_and_mockclock(
-    timeline: Timeline,
+    timeline: Timeline, processor
 ) -> Tuple[Playback, "MockClock", MagicMock, Timeline]:
     """Create a Playback of a Timeline with a mocked Clock and processor"""
     # mock time using the MockClock and
     # then _advance by hand and check if state is correct
     mock_clock = MockClock(0)
-    processor = MagicMock()
 
     pb = Playback(timeline=timeline, processor=processor, clock=mock_clock)
     # mock started thread
@@ -52,10 +59,10 @@ def playback_and_mockclock(
     return pb, mock_clock, processor, timeline
 
 
-def test_playback_init():
+def test_playback_init(processor):
     """test the the initial state of the Playback"""
     tl = Timeline()
-    pb = Playback(timeline=tl, processor=MagicMock())
+    pb = Playback(timeline=tl, processor=processor)
     assert pb.rate == 1, "Default rate should be 1"
     assert tl.is_empty() and pb._next_bundle is None
 
@@ -64,14 +71,14 @@ def test_playback_init():
     tl.insert(2, [Event(track=2)])
 
     # (0>) 1 - 2 - init before the first element
-    pb = Playback(timeline=tl, processor=MagicMock(), start=tl.head.timestamp - 1)
+    pb = Playback(timeline=tl, processor=processor, start=tl.head.timestamp - 1)
     assert pb._next_bundle is tl.head
     assert not pb._over_the_end
 
     # 1 - 2 (<3) - init reversed before the last element
     pb = Playback(
         timeline=tl,
-        processor=MagicMock(),
+        processor=processor,
         rate=-1,
         start=tl.tail.timestamp + 1,
     )
@@ -79,42 +86,42 @@ def test_playback_init():
     assert not pb._over_the_end
 
     # 1 - (2>)2 - init at the last element
-    pb = Playback(timeline=tl, processor=MagicMock(), start=tl.tail.timestamp)
+    pb = Playback(timeline=tl, processor=processor, start=tl.tail.timestamp)
     assert pb._next_bundle is tl.tail
     assert not pb._over_the_end
 
     # (1>)1 - 2 - init at the first element
-    pb = Playback(timeline=tl, processor=MagicMock(), start=tl.head.timestamp)
+    pb = Playback(timeline=tl, processor=processor, start=tl.head.timestamp)
     assert pb._next_bundle is tl.head
     assert not pb._over_the_end
 
     # try to init before the first and last element
     # 1 - 2(2.1>)
-    pb = Playback(timeline=tl, processor=MagicMock(), start=2.1)
+    pb = Playback(timeline=tl, processor=processor, start=2.1)
     assert pb._next_bundle is tl.tail
     assert pb._over_the_end
 
     # (<0)1 - 2
-    pb = Playback(timeline=tl, processor=MagicMock(), rate=-1, start=0)
+    pb = Playback(timeline=tl, processor=processor, rate=-1, start=0)
     assert pb._next_bundle is tl.head
     assert pb._over_the_end
 
     # init between the events
     # 1 -(1.5>)- 2
-    pb = Playback(timeline=tl, processor=MagicMock(), start=1.5)
+    pb = Playback(timeline=tl, processor=processor, start=1.5)
     assert pb._next_bundle is tl.tail
     assert not pb._over_the_end
     # 1 -(<1.5)- 2
-    pb = Playback(timeline=tl, processor=MagicMock(), rate=-1, start=1.5)
+    pb = Playback(timeline=tl, processor=processor, rate=-1, start=1.5)
     assert pb._next_bundle is tl.head
     assert not pb._over_the_end
 
 
-def test_playback_timeouts():
+def test_playback_timeouts(processor):
     """test if the controls (time, rate) raise Timeouts"""
     # This should happen when the worker thread fails to adjust the values in time
     tl = Timeline()
-    pb = Playback(timeline=tl, processor=MagicMock())
+    pb = Playback(timeline=tl, processor=processor)
     pb.start()
     # kill worker thread manually to make sure it fails to adjust the values
     pb._stop_event.set()
@@ -142,10 +149,10 @@ def test_playback_timeouts():
         pb.reverse()
 
 
-def test_playback_time_control():
+def test_playback_time_control(processor):
     """Test setting the time using the time property"""
     tl = Timeline()
-    pb = Playback(timeline=tl, processor=MagicMock())
+    pb = Playback(timeline=tl, processor=processor)
     with pytest.raises(RuntimeError):
         pb.time
     with pytest.raises(RuntimeError):
@@ -168,9 +175,9 @@ def test_playback_time_control():
     pb.stop()
 
 
-def test_playback_start_and_end_time(timeline):
+def test_playback_start_and_end_time(timeline, processor):
     """Test getting/setting the start_time and end_time values"""
-    pb = Playback(timeline=timeline, processor=MagicMock())
+    pb = Playback(timeline=timeline, processor=processor)
 
     # test the default values
     assert pb.start_time == 0
@@ -210,10 +217,10 @@ def test_playback_start_and_end_time(timeline):
         assert pb.end_time == timeline.end_time - timeline.end_time_offset + offset
 
 
-def test_playback_rate_control():
+def test_playback_rate_control(processor):
     """Test setting/getting the rate property"""
     tl = Timeline()
-    pb = Playback(timeline=tl, processor=MagicMock())
+    pb = Playback(timeline=tl, processor=processor)
     # test rate init value
     assert pb.rate == 1
     # test setting/getting rate value
@@ -286,9 +293,9 @@ def test_playback_rate_time_effect(playback_and_mockclock):
     )
 
 
-def test_playback_startstop_control():
+def test_playback_startstop_control(processor):
     """Test if start and stop have the desired effect"""
-    pb = Playback(timeline=Timeline(), processor=MagicMock())
+    pb = Playback(timeline=Timeline(), processor=processor)
 
     assert pb.running is False
     with pytest.raises(RuntimeError):
@@ -344,9 +351,9 @@ def test_playback_startstop_control():
     assert pb.running is False
 
 
-def test_playback_restart():
+def test_playback_restart(processor):
     """Test if restarting has the desired effect"""
-    pb = Playback(timeline=Timeline(), processor=MagicMock())
+    pb = Playback(timeline=Timeline(), processor=processor)
     pb.start()
     assert pb.running is True
     pb.restart()
@@ -360,9 +367,9 @@ def test_playback_restart():
     assert pb.running is False
 
 
-def test_playback_pause_resume(playback_and_mockclock):
+def test_playback_pause_resume(playback_and_mockclock, processor):
     """Test if pause and resume have the desired effect"""
-    pb = Playback(timeline=Timeline(), processor=MagicMock())
+    pb = Playback(timeline=Timeline(), processor=processor)
 
     # not running
     with pytest.raises(RuntimeError):

@@ -2,6 +2,7 @@ import atexit
 import logging
 import math
 import time
+import warnings
 from threading import Event, Thread
 from typing import Optional, SupportsFloat
 
@@ -9,6 +10,14 @@ from mesonic.processor import BundleProcessor
 from mesonic.timeline import TimeBundle, Timeline
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def simple_formatwarning(message, category, filename, lineno, line=None):
+    # ignore everything except the category and message
+    return "%s: %s\n" % (category.__name__, message)
+
+
+warnings.formatwarning = simple_formatwarning
 
 
 def _sign(x: SupportsFloat) -> float:
@@ -30,7 +39,7 @@ def _sign(x: SupportsFloat) -> float:
 class Clock:
     """The Clock class provides the Time for the Playback."""
 
-    sleep_time = 0.001
+    sleep_time = 0.01
     """Clock sleeping time."""
     fast_mode = False
     time_source = time.perf_counter
@@ -95,6 +104,8 @@ class Playback:
         # _wait_time that the worker has before the getter methods timeout
         self._wait_time = 0.1
         self.grace_time = 0.1
+
+        self.allowed_lateness = 0.01
 
         self.processor = processor
         self._timeline = timeline
@@ -539,10 +550,12 @@ class Playback:
         # see if we now have a bundle to execute
         if self._next_bundle is not None:
             # calculate the time difference from now to the next bundle
-            time_delta = (self._next_bundle.timestamp - self._time) * self._rate_sign
+            next_time_delta = (
+                self._next_bundle.timestamp - self._time
+            ) * self._rate_sign
             # if the time to the next bundle is equal or smaller zero
             # we should send it to the processor
-            if time_delta <= 0:
+            if next_time_delta <= 0:
                 # execute bundle only if
                 # - not already executed (over_the_end)
                 # - when the bundle is between the start and end time (out_of_time_bounds)
@@ -593,6 +606,14 @@ class Playback:
                 # and have a non zero rate
                 if not self._check_for_loop and self._rate != 0:
                     self._advance_bundle()
+
+        if self._next_bundle and not self._over_the_end:
+            next_time_delta = (
+                self._next_bundle.timestamp - self._time
+            ) * self._rate_sign
+        else:
+            next_time_delta = float("inf")
+        return next_time_delta
 
     def _process_events_and_adjust_time(self):
         """Calculate the new time according to the Clock and the user interactions."""
@@ -713,9 +734,21 @@ class Playback:
         Until the stop event is set:
             - Advance one time period and then sleep.
         """
+        last_print = 0
         while not self._stop_event.is_set():
             try:
-                self._advance()
+                time_delta = self._advance()
             except Exception as exception:
                 _LOGGER.error("Exception occured in Playback", exc_info=exception)
-            self.clock.sleep()
+            else:
+                # time_delta is the abs time to the next timebundle without latency and it is
+                #  > 0 if ahead
+                #  = 0 if punctual
+                #  < 0 if late
+                if time_delta >= self.processor.latency * 0.25:
+                    self.clock.sleep()
+                elif time_delta <= -self.allowed_lateness:
+                    now = self.clock.time()
+                    if now - last_print > 0.5:
+                        last_print = now
+                        warnings.warn(f"Playback late {abs(time_delta)}")
