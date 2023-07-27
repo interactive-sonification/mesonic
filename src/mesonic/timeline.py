@@ -428,9 +428,15 @@ class Timeline:
     def _create_segments(self, offset_key="freq", width_key="amp"):
         splitted_synth_events = self._check_consistency()
         # for quiver X, U, Y (V=0), arrowwidths
-        segments = {"begins": [], "ends": [], "offsets": [], "widths": []}
-        # for scatter tuples (x,y)
-        markers = {"start": [], "stop": [], "set": []}
+        segments = {
+            "begins": [],
+            "ends": [],
+            "offsets": [],
+            "widths": [],
+            "connections": [],
+        }
+        # start & stop tuples (x,y) for scatter, set events: (x,y,x,y2)
+        markers = {"starts": [], "stops": [], "sets": []}
         synth_plot_info = {
             synth: {
                 "events": events,
@@ -444,6 +450,7 @@ class Timeline:
             ends = synth_plot_info[synth]["segments"]["ends"]
             offsets = synth_plot_info[synth]["segments"]["offsets"]
             widths = synth_plot_info[synth]["segments"]["widths"]
+            connections = synth_plot_info[synth]["segments"]["connections"]
 
             for time, event in events[SynthEventType.START]:
                 begins.append(time)
@@ -458,9 +465,7 @@ class Timeline:
                 for set_time, set_event in events[SynthEventType.SET]:
                     combined_set_events[set_time].append(set_event)
                 insert_idx = 0
-                # begins = begins
                 for set_time, set_events in combined_set_events.items():
-                    # set search index back by one
                     while insert_idx < len(begins) and begins[insert_idx] < set_time:
                         insert_idx += 1
                     # get properties for the event data
@@ -471,6 +476,12 @@ class Timeline:
                             offset = set_event.data["new_value"]
                             offsets.insert(insert_idx, offset)
                             found_offset = True
+                            connections.append(
+                                [
+                                    (set_time, set_event.data["old_value"]),
+                                    (set_time, offset),
+                                ]
+                            )
                         if set_event.data["name"] == width_key:
                             width = set_event.data["new_value"]
                             widths.insert(insert_idx, width)
@@ -493,9 +504,7 @@ class Timeline:
             assert len(begins) == len(widths)
         return synth_plot_info
 
-    def plot_new(
-        self, offset="freq", width="amp", duration_key="dur", default_duration=0.1
-    ):
+    def plot_new(self, offset="freq", width="amp", scale=None):
         """Plot the Timeline.
 
         Parameters
@@ -516,7 +525,11 @@ class Timeline:
             If matplotlib cannot be imported.
         """
         try:
+            import matplotlib.patches as mpatches
             import matplotlib.pyplot as plt
+            import matplotlib.ticker as ticker
+            from matplotlib.collections import LineCollection
+
         except ImportError as err:
             raise ImportError(
                 "plotting the Timeline is only possible when matplotlib is installed."
@@ -560,14 +573,25 @@ class Timeline:
         # "color": None,
         # "y_offset": 0,
 
-        fig = plt.figure()
-        axes = fig.add_subplot(1, 1, 1)
-        from matplotlib.collections import LineCollection
+        fig = plt.figure(figsize=(8, 2))
+        ax = fig.add_subplot(1, 1, 1)
+        cmap = plt.get_cmap("Set1")
 
         x_min, x_max = 0, 0
         y_min, y_max = 0, 0
 
-        for synth in synth_plot_info.keys():
+        patches = []
+        synth_colors = {}
+        synth_labels = {}
+        for synth_idx, synth in enumerate(synth_plot_info.keys()):
+            synth_colors[synth] = cmap(synth_idx)
+            synth_labels[synth] = f"{synth.name}" + (
+                " (mutable)" if synth.mutable else " (immutable)"
+            )
+            patches.append(
+                mpatches.Patch(color=synth_colors[synth], label=synth_labels[synth])
+            )
+
             segments = synth_plot_info[synth]["segments"]
             begins = np.array(segments["begins"])
             ends = np.array(segments["ends"])
@@ -597,22 +621,66 @@ class Timeline:
                     )
                 )
             )
-            lc = LineCollection(
-                lines,
-                linewidth=widths,
+            synth_segments_collection = LineCollection(
+                lines, linewidth=widths, color=synth_colors[synth]
             )
-            axes.add_collection(lc)
+            ax.add_collection(synth_segments_collection)
+            if synth.mutable:
+                connections = synth_plot_info[synth]["segments"]["connections"]
+                synth_connections_collection = LineCollection(
+                    connections, linewidth=0.5, color=synth_colors[synth]
+                )
+                ax.add_collection(synth_connections_collection)
 
             x_min = min(begins.min(), x_min)
             x_max = max(ends.max(), x_max)
             y_min = min(offsets.min(), y_min)
             y_max = max(offsets.max(), y_max)
 
-        x_lim = (x_max - x_min) * 0.1
-        axes.set_xlim(x_min - x_lim, x_max + x_lim)
-        y_lim = (y_max - y_min) * 0.1
-        axes.set_ylim(y_min - y_lim, y_max + y_lim)
-        axes.grid()
+        x_lim = (x_max - x_min) * 0.01
+        ax.set_xlim(x_min - x_lim, x_max + x_lim)
+        # y_lim = (y_max - y_min) * 0.1
+        # axes.set_ylim(y_min - y_lim, y_max + y_lim)
+
+        # test
+        ax.legend(handles=patches, loc="best")
+        ax.grid()
+        ax.set_title("Timeline")
+        ax.set_xlabel("time [s]")
+
+        if offset == "freq":
+            ax.set_yscale("log")
+            ax.set_ylabel("frequency [Hz]")
+            secax = ax.secondary_yaxis(
+                location="right", functions=(pam.cps_to_midi, pam.midi_to_cps)
+            )
+            secax.set_ylabel("MIDI Note")
+            secax.yaxis.set_major_locator(
+                ticker.MaxNLocator(nbins="auto", steps=[1, 2, 4, 5, 10], integer=True)
+            )
+            secax.yaxis.set_major_formatter(lambda x, pos: str(int(x)))
+        elif offset == "amp":
+            ax.set_yscale("log")
+            ax.set_ylabel("amplitude")
+
+            def safe_amp_to_db(amp):
+                return pam.amp_to_db(amp) if amp > 0 else -90
+
+            secax = ax.secondary_yaxis(
+                location="right", functions=(safe_amp_to_db, pam.db_to_amp)
+            )
+            secax.set_ylabel("level [dB]")
+            secax.yaxis.set_major_locator(
+                ticker.MaxNLocator(nbins="auto", steps=[1, 2, 4, 5, 10], integer=True)
+            )
+            secax.yaxis.set_major_formatter(lambda x, pos: str(int(x)))
+        else:
+            ax.set_ylabel(offset)
+
+        ax.autoscale(enable=True, axis=True, tight=True)
+        # axes.margins(0.05)
+
+        fig.tight_layout()
 
     # TODO Idea: convention to order the Synth Params by most probalbe usage
 
