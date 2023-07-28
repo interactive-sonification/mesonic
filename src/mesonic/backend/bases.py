@@ -256,6 +256,18 @@ class SynthManager(Manager[B, SynthEventHandler]):
         raise NotImplementedError
 
     @abstractmethod
+    def add_buffer_synth_def(self, name, **kwargs):
+        """Create a Synth Definition for SynthManager.from_buffer() to the backend.
+
+        Parameters
+        ----------
+        name : str
+            SynthDef name.
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def add_synth_def(self, name, **kwargs):
         """Create a Synth Definition to the backend.
 

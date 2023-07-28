@@ -231,7 +231,7 @@ class SynthManagerSC3NB(SynthManager):
             gap: fun(scbuffer)
             for gap, fun in SynthManagerSC3NB.buffer_synthdefs_slots.items()
         }
-        identifier = "sc3nb_{synth_name}_{scbuffer.bufnum}"
+        identifier = f"sc3nb_{synth_name}_{scbuffer.bufnum}"
         if identifier not in SynthManagerSC3NB.sent_synthdefs:
             SynthDef(
                 name=f"sc3nb_{synth_name}_{scbuffer.bufnum}", definition=synth_def_code
@@ -251,7 +251,7 @@ class SynthManagerSC3NB(SynthManager):
         synth.metadata.update({"from_buffer": buffer})
         return synth
 
-    def add_synth_def(self, name, code=None, **kwargs):
+    def add_buffer_synth_def(self, name, code=None, **kwargs):
         if code is None:
             raise ValueError('Must provide "code"')
         identifier_start = f"sc3nb_{name}"
@@ -262,6 +262,11 @@ class SynthManagerSC3NB(SynthManager):
                 if not synth_def.startswith(identifier_start)
             }
         SynthManagerSC3NB.buffer_synthdefs[name] = code
+
+    def add_synth_def(self, name, code=None, **kwargs):
+        if code is None:
+            raise ValueError('Must provide "code"')
+        SynthDef(name, code).add()
 
 
 class RecordEventHandlerSC3NB(EventHandlerSC3NB, RecordEventHandler):
