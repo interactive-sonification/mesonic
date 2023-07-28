@@ -1,4 +1,5 @@
 import logging
+import warnings
 from collections import defaultdict
 from copy import copy
 from typing import Callable, Dict, List, Optional
@@ -31,7 +32,7 @@ class BundleProcessor:
         self.selected_tracks: Optional[List[int]] = None
         """Optional list of selected tracks.
         If this is not None all Event with a track not in selected_tracks won't be passed."""
-        self.event_filter: Optional[Callable[[Event], Optional[Event]]] = None
+        self.event_filters: List[Callable[[Event], Optional[Event]]] = []
         """Optional event info filter function. Should return None for filtering.
         If this is not None all Event will be filtered using this function."""
 
@@ -62,15 +63,7 @@ class BundleProcessor:
             Wether this TimeBundle should be reversed.
         """
 
-        try:
-            events = self.prepare_events(
-                bundle.events, self.selected_tracks, self.event_filter
-            )
-        except Exception as exception:
-            self.event_filter = None
-            raise RuntimeError(
-                "Processor.event_filter raised exception, setting it back to None"
-            ) from exception
+        events = self.prepare_events(bundle.events, self.selected_tracks)
 
         splitted_events = self.split_events(events)
 
@@ -81,33 +74,31 @@ class BundleProcessor:
                     time=scheduled_time + self.latency,
                     events=events_of_type,
                     reversed=reversed,
-                    **kwargs
+                    **kwargs,
                 )
 
-    @classmethod
     def prepare_events(
-        cls,
+        self,
         events: List[Event],
         selected_tracks: Optional[List[int]] = None,
-        fun: Optional[Callable[[Event], Optional[Event]]] = None,
     ) -> List[Event]:
-        """Filter and transform Events using the provided function.
+        """Filter and transform Events using the provided filters.
 
-        Note that if a function is provided it is applied
-        before selecting the Tracks. This means that the function could be used
-        to change the track of an Event prior to the selection of tracks.
+        Note that the filters are applied before selecting the Tracks.
+        This means that the function could be used to change the track
+        of an Event prior to the selection of tracks.
 
         Parameters
         ----------
         events : List[Event]
             A list of Events that should be prepared.
+        filters : List[Callable[[Event], Optional[Event]]]
+            An a list of filter functions that take an Event and
+            return a transformed Event or None to discard the Event.
         selected_tracks : Optional[List[int]]
             List of selected tracks, default None
             If this is not None all Event with a track not in
             selected_tracks won't be passed.
-        fun : Optional[Callable[[Event], Optional[Event]]]
-            An optional function that takes an Event and
-            returns a transformed Event or None to discard the Event.
 
         Returns
         -------
@@ -116,18 +107,33 @@ class BundleProcessor:
         """
         events = copy(events)
 
-        def new_fun(event: Event) -> Optional[Event]:
+        def event_selection(event: Event) -> Optional[Event]:
             """Filter events with a combined function."""
-            if fun is not None:
-                filtered_event = fun(event)
-                if filtered_event is None:
-                    return None
-                event = filtered_event
+            bad_filters = []
+            for filter_fun in self.event_filters:
+                try:
+                    filtered_event = filter_fun(event)
+                except Exception as exception:
+                    bad_filters.append(filter_fun)
+                    warnings.warn(
+                        f"event_filter {filter_fun} raised exception of type {type(exception)} ({exception}), removing it"
+                    )
+                else:
+                    if filtered_event is None:
+                        return None
+                    event = filtered_event
+            if bad_filters:
+                self.event_filters = [
+                    event_filter
+                    for event_filter in self.event_filters
+                    if event_filter not in bad_filters
+                ]
+            # select the tracks
             if selected_tracks is not None:
                 return event if event and event.track in selected_tracks else None
             return event
 
-        return list(filter(None, map(new_fun, events)))
+        return list(filter(None, map(event_selection, events)))
 
     @classmethod
     def split_events(cls, events: List[Event]) -> Dict[type, List[Event]]:
