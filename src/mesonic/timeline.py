@@ -573,7 +573,7 @@ class Timeline:
         # "color": None,
         # "y_offset": 0,
 
-        fig = plt.figure(figsize=(8, 2))
+        fig = plt.figure()  # figsize=(8, 2)
         ax = fig.add_subplot(1, 1, 1)
         cmap = plt.get_cmap("Set1")
 
@@ -608,7 +608,6 @@ class Timeline:
                 ret = pam.linlin(
                     value, widths.min(), widths.max(), width_min, width_max
                 )
-                print(value, ret)
                 return ret
 
             offsets = warp_offset(offsets)
@@ -637,20 +636,30 @@ class Timeline:
             y_min = min(offsets.min(), y_min)
             y_max = max(offsets.max(), y_max)
 
-        x_lim = (x_max - x_min) * 0.01
-        ax.set_xlim(x_min - x_lim, x_max + x_lim)
+        # x_lim = (x_max - x_min) * 0.01
+        # ax.set_xlim(x_min - x_lim, x_max + x_lim)
         # y_lim = (y_max - y_min) * 0.1
         # axes.set_ylim(y_min - y_lim, y_max + y_lim)
 
+        MAX_LEGEND_NCOLS = 5
+
         # test
-        ax.legend(handles=patches, loc="best")
+        ax.legend(
+            handles=patches,
+            loc="lower left",
+            mode="expand",
+            bbox_to_anchor=(0.0, 1.02, 1.0, 0.102),
+            borderaxespad=0,
+            ncol=min(len(patches), MAX_LEGEND_NCOLS),
+        )
         ax.grid()
-        ax.set_title("Timeline")
         ax.set_xlabel("time [s]")
 
         if offset == "freq":
             ax.set_yscale("log")
             ax.set_ylabel("frequency [Hz]")
+
+            # TODO perhaps we also could want mel?
             secax = ax.secondary_yaxis(
                 location="right", functions=(pam.cps_to_midi, pam.midi_to_cps)
             )
@@ -664,22 +673,20 @@ class Timeline:
             ax.set_ylabel("amplitude")
 
             def safe_amp_to_db(amp):
-                return pam.amp_to_db(amp) if amp > 0 else -90
+                return np.where(amp > 0, pam.amp_to_db(amp), -90)
 
             secax = ax.secondary_yaxis(
                 location="right", functions=(safe_amp_to_db, pam.db_to_amp)
             )
             secax.set_ylabel("level [dB]")
             secax.yaxis.set_major_locator(
-                ticker.MaxNLocator(nbins="auto", steps=[1, 2, 4, 5, 10], integer=True)
+                ticker.MaxNLocator(nbins="auto", steps=[1, 2, 4, 5, 10])
             )
             secax.yaxis.set_major_formatter(lambda x, pos: str(int(x)))
         else:
             ax.set_ylabel(offset)
 
-        ax.autoscale(enable=True, axis=True, tight=True)
-        # axes.margins(0.05)
-
+        ax.autoscale(enable=True)
         fig.tight_layout()
 
     # TODO Idea: convention to order the Synth Params by most probalbe usage
