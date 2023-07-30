@@ -154,12 +154,43 @@ class Context:
         return self.at(self.playback.time + delay, info=info)
 
     @contextmanager
-    def test(self, at=0, rate=1, clear=True):
-        if self.is_realtime:
-            raise RuntimeError("Context.test not available in realtime mode")
-        if clear:
-            self.clear()
+    def test(self, at=0, rate: Optional[float] = None, reset=True):
+        """Context Manager for scheduling Events with prior reset and playback.start after.
 
+        This is useful for repeatedly tweaking and testing your code.
+
+        Parameters
+        ----------
+        at : float, default 0.0
+            time where the playback should start.
+        rate : Optional[float], optional
+            playback rate, by default None means keep current rate
+
+        Examples
+        --------
+
+        You can use
+        >>> with context.test(at=0.5):
+        ...     with.context.at(1):
+        ...         synth.start()
+        ...     with.context.at(2):
+        ...         synth.stop()
+
+        instead of
+        >>> self.context.reset()
+        ... with.context.at(1):
+        ...     synth.start()
+        ... with.context.at(2):
+        ...     synth.stop()
+        ... context.playback.start(at=0.5)
+
+        Raises
+        ------
+        RuntimeError
+            If used not in realtime mode.
+        """
+        if reset:
+            self.reset()
         try:
             yield self
         except Exception as exception:
