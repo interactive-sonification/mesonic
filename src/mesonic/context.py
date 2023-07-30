@@ -360,7 +360,7 @@ class Context:
         self._backend.render_nrt(self, output_path=output_path, **backend_kwargs)
 
     def stop(self):
-        """Stop the current backend audio.
+        """Stop the current Playbacks and backend audio.
 
         Note that this will not stop the Playbacks.
 
