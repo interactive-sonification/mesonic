@@ -105,7 +105,7 @@ class Playback:
         self._wait_time = 0.1
         self.grace_time = 0.1
 
-        self.allowed_lateness = 0.01
+        self.allowed_lateness = 0.5 * processor.latency
 
         self.processor = processor
         self._timeline = timeline
