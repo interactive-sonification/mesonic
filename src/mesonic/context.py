@@ -65,6 +65,7 @@ class Context:
 
         self.playbacks = WeakSet()
         self.playback = self.create_playback()
+        self._is_realtime = False
 
         self._in_time_context = False
         self._in_time_context_info = None
@@ -292,12 +293,12 @@ class Context:
         Playback
             realtime Playback instance of this Context.
         """
-        self._is_realtime = True
         if not self.is_realtime:
             self.playback.loop = False
             self.playback.start_time = at
             self.playback.end_time = None
             self.playback.start(at=at, rate=rate)
+        self._is_realtime = True
         return self.playback
 
     def disable_realtime(self) -> Playback:
