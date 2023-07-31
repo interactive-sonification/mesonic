@@ -332,10 +332,8 @@ class Context:
     def reset(self, at=0, rate=1):
         """Reset the Context.
 
-        This will clear the Context.timeline and restart the
-        playback if self.is_realtime
-
-        This is deprecated use Context.clear instead.
+        This will clear the Context.timeline and stops the Context.playback
+        If Context.is_realtime is True this will restart the Playback instance.
 
         Parameters
         ----------
@@ -347,38 +345,14 @@ class Context:
         Returns
         -------
         Playback
-            playback if self.is_realtime.
-
-        """
-        warn(
-            "This method is deprecated, use Context.clear instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        self.clear(at, rate)
-
-    def clear(self, at=0, rate=1):
-        """Clear the Context.
-
-        This will clear the Context.timeline and restart the
-        playback if self.is_realtime
-
-        Parameters
-        ----------
-        at : float, optional
-            Timepoint where the Playback will be restarted, by default None
-        rate : _type_, optional
-            Rate for the Playback restart, by default None
-
-        Returns
-        -------
-        Playback
-            playback if self.is_realtime.
+            playback instance of Context.
 
         """
         self.timeline.reset()
         if self.is_realtime:
             return self.playback.restart(at=at, rate=rate)
+        else:
+            return self.playback.stop()
 
     def render(self, output_path=None, **backend_kwargs):
         """Render this context in non-realtime using the Backend.
