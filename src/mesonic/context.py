@@ -274,8 +274,8 @@ class Context:
 
     @property
     def is_realtime(self) -> bool:
-        """bool: Flag if this is in realtime mode. (playback.running == True)"""
-        return self.playback.running
+        """bool: Flag if this is in realtime mode."""
+        return self._is_realtime
 
     def enable_realtime(self, at: float = 0, rate: float = 1) -> Playback:
         """Start the realtime Playback.
@@ -292,6 +292,7 @@ class Context:
         Playback
             realtime Playback instance of this Context.
         """
+        self._is_realtime = True
         if not self.is_realtime:
             self.playback.loop = False
             self.playback.start_time = at
@@ -307,7 +308,8 @@ class Context:
         Playback
             realtime Playback instance of this Contxt.
         """
-        if self.is_realtime:
+        self._is_realtime = False
+        if self.playback.running:
             self.playback.stop()
         return self.playback
 
