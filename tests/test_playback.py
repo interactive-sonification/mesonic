@@ -663,10 +663,11 @@ def test_playback_integrated(
     tl.reset()
     pb._advance()
     assert pb._next_bundle is None
+    assert pb.running
     pb._advance()
     assert pb._next_bundle is None
 
-    logging.debug("test timeline reset")
+    logging.debug("test timeline insert after reset")
     tl.insert(0, [Event(track=100)])
     pb._advance()
     assert pb._next_bundle is tl.head

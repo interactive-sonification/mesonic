@@ -527,8 +527,6 @@ class Playback:
             _LOGGER.debug("advance: timeline is empty")
             self._next_bundle = None
             self._over_the_end = False
-            # end the worker thread
-            self._stop_event.set()
 
         # check if timeline has a new bundle before our next bundle inserted
         if (
