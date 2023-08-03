@@ -297,7 +297,7 @@ class Context:
             self.playback.loop = False
             self.playback.start_time = at
             self.playback.end_time = None
-            self.playback.start(at=at, rate=rate)
+        self.playback.start(at=at, rate=rate)
         self._is_realtime = True
         return self.playback
 
