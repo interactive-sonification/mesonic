@@ -330,7 +330,7 @@ class Context:
 
     # Control related methods
 
-    def reset(self, at=0, rate=1):
+    def reset(self, at: Optional[float] = None, rate: Optional[float] = None):
         """Reset the Context.
 
         This will clear the Context.timeline and stops the Context.playback
@@ -340,8 +340,8 @@ class Context:
         ----------
         at : float, optional
             Timepoint where the Playback will be restarted, by default None
-        rate : _type_, optional
-            Rate for the Playback restart, by default None
+        rate : float, optional
+            Rate for the Playback restart, by default keep current rate
 
         Returns
         -------
@@ -351,8 +351,10 @@ class Context:
         """
         self.timeline.reset()
         if self.is_realtime:
+            if at is None:
+                at = -self.playback.processor.latency
             return self.playback.restart(at=at, rate=rate)
-        else:
+        elif self.playback.running:
             return self.playback.stop()
 
     def render(self, output_path=None, **backend_kwargs):
