@@ -106,6 +106,7 @@ class Playback:
         self.grace_time = 0.1
 
         self.allowed_lateness = 0.5 * processor.latency
+        self.sleep_factor = 0.25
 
         self.processor = processor
         self._timeline = timeline
@@ -743,7 +744,7 @@ class Playback:
                 #  > 0 if ahead
                 #  = 0 if punctual
                 #  < 0 if late
-                if time_delta >= self.processor.latency * 0.25:
+                if time_delta >= self.clock.sleep_time * self.sleep_factor:
                     self.clock.sleep()
                 elif time_delta <= -self.allowed_lateness:
                     now = self.clock.time()

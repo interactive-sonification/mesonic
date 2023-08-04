@@ -355,8 +355,6 @@ class Context:
         """
         self.timeline.reset()
         if self.is_realtime:
-            if at is None:
-                at = -self.playback.processor.latency
             return self.playback.restart(at=at, rate=rate)
         elif self.playback.running:
             return self.playback.stop()
