@@ -1,6 +1,7 @@
 import logging
+import tempfile
 from contextlib import contextmanager, suppress
-from typing import Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 from warnings import warn
 from weakref import WeakSet
 
@@ -12,6 +13,9 @@ from mesonic.processor import BundleProcessor
 from mesonic.timeline import Timeline
 
 _LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from pya import Asig
 
 SYNTHS = "synths"
 BUFFERS = "buffers"
@@ -368,6 +372,21 @@ class Context:
             Output path of the rendering.
         """
         self._backend.render_nrt(self, output_path=output_path, **backend_kwargs)
+
+    def render_asig(self, **backend_kwargs) -> "Asig":
+        """Render this context in non-realtime as Asig using the Backend.
+
+        See Context.backend.render_nrt for more information.
+
+        """
+        from pya import Asig
+
+        asig = None
+        with tempfile.TemporaryDirectory(prefix="mesonic_") as tmpdirname:
+            filename = f"{tmpdirname}/timeline.wav"
+            self._backend.render_nrt(self, output_path=filename, **backend_kwargs)
+            asig = Asig(f"{tmpdirname}/timeline.wav")
+        return asig
 
     def stop(self):
         """Stop the current Playbacks and backend audio.
