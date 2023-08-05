@@ -746,7 +746,7 @@ class Playback:
                 #  < 0 if late
                 if time_delta >= self.clock.sleep_time * self.sleep_factor:
                     self.clock.sleep()
-                elif time_delta <= -self.allowed_lateness:
+                elif time_delta <= -self.allowed_lateness and not self._check_for_loop:
                     now = self.clock.time()
                     if now - last_print > 0.5:
                         last_print = now
