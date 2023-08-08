@@ -33,6 +33,7 @@ from mesonic.synth import ParameterInfo, Synth
 if TYPE_CHECKING:
     from typing import List
     from mesonic.context import Context
+    from sc3nb.sc_objects.server import ServerOptions
 
 import sc3nb.osc.osc_communication as scosc
 import sc3nb.sc_objects.buffer as scbuf
@@ -387,7 +388,13 @@ class BackendSC3NB(Backend):
     def create_record_manager(self, context: "Context") -> RecordManagerSC3NB:
         return RecordManagerSC3NB(self, context)
 
-    def render_nrt(self, context: "Context", output_path, **backend_kwargs) -> None:
+    def render_nrt(
+        self,
+        context: "Context",
+        output_path,
+        options: Optional["ServerOptions"] = None,
+        **backend_kwargs,
+    ) -> None:
         assert (
             context.backend is self
         ), "Provided a Context that not belongs to this Backend"
@@ -425,7 +432,11 @@ class BackendSC3NB(Backend):
             osc_file = Path(osc_path) / "nrtscore.osc"
             # Use the sc3nb.Score class with the bundler messages to render
             Score.record_nrt(
-                bundler.messages(), osc_file.as_posix(), output_path, **backend_kwargs
+                bundler.messages(),
+                osc_file.as_posix(),
+                output_path,
+                options=options,
+                **backend_kwargs,
             )
 
     def quit(self) -> None:
