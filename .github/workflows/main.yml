@@ -81,8 +81,9 @@ jobs:
       - name: Install SuperCollider windows
         if: matrix.platform == 'windows-latest'
         shell: bash -l {0}
-        run: choco install supercollider
-        continue-on-error: true  # This can fail for stupid reasons ¯\_(ツ)_/¯
+        run: |
+          choco upgrade chocolatey-core.extension
+          choco install supercollider
       - name: Retrieve pre-built distribution files
         uses: actions/download-artifact@v3
         with: {name: python-distribution-files, path: dist/}
