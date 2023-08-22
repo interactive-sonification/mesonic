@@ -20,16 +20,20 @@ a Sonification Framework
 Installation
 ============
 
+You can install mesonic with the default backend `sc3nb`_ using pip
+
+    pip install mesonic[sc3nb]
+
+Note that to run the notebooks mesonic also requires a backend like `SuperCollider`_ and/or `pya`_ to be installed.
+
+Developer Installation
+======================
+
 To clone and install mesonic with dependencies required for the notebooks run::
 
     git clone https://github.com/interactive-sonification/mesonic.git
     cd mesonic
     pip install -e ".[notebooks]"
-    pip install "git+https://github.com/interactive-sonification/sc3nb.git@develop"
-
-Note that to run the notebooks mesonic also requires `SuperCollider`_ and `pya`_ to be installed.
-
-We are currently making sure that mesonic can be installed regulary via pip.
 
 Running Tests & Building
 ========================
@@ -54,6 +58,7 @@ update the hooks to the latest version::
 
     pre-commit autoupdate
 
+.. _sc3nb: https://github.com/interactive-sonification/sc3nb
 .. _SuperCollider: https://github.com/supercollider/supercollider
 .. _tox: https://github.com/tox-dev/tox
 .. _pre-commit: https://pre-commit.com/
