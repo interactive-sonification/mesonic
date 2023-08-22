@@ -82,8 +82,8 @@ jobs:
         if: matrix.platform == 'windows-latest'
         shell: bash -l {0}
         run: |
-          choco upgrade chocolatey-core.extension
-          choco install supercollider
+          choco upgrade --no-progress chocolatey-core.extension
+          choco install --no-progress supercollider
       - name: Retrieve pre-built distribution files
         uses: actions/download-artifact@v3
         with: {name: python-distribution-files, path: dist/}
