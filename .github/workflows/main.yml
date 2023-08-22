@@ -66,20 +66,23 @@ jobs:
         id: setup-python
         with:
           python-version: ${{ matrix.python }}
-      - name: Install SuperCollider
-        shell: bash
+      - name: Install SuperCollider ubuntu
+        if: matrix.platform == 'ubuntu-latest'
+        shell: bash -l {0}
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-              sudo apt-get update
-              sudo apt-get install --yes supercollider
-              # start jack
-              jackd --no-realtime -d dummy &
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-              brew install --cask supercollider
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-              # choco only offers an ancient version of SC.
-              choco install supercollider
-          fi
+          sudo apt-get update
+          sudo apt-get install --yes supercollider
+          # start jack
+          jackd --no-realtime -d dummy &
+      - name: Install SuperCollider macos
+        if: matrix.platform == 'macos-latest'
+        shell: bash -l {0}
+        run: brew install --cask supercollider
+      - name: Install SuperCollider windows
+        if: matrix.platform == 'windows-latest'
+        shell: bash -l {0}
+        run: choco install supercollider
+        continue-on-error: true  # This can fail for stupid reasons ¯\_(ツ)_/¯
       - name: Retrieve pre-built distribution files
         uses: actions/download-artifact@v3
         with: {name: python-distribution-files, path: dist/}
