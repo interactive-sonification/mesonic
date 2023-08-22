@@ -72,6 +72,8 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
+    "nbsphinx",  # include notebooks in doc
+    "nbsphinx_link",  # support notebooks outside of doc/source via .nblink files
 ]
 
 # Add any paths that contain templates here, relative to this directory.
